@@ -118,7 +118,7 @@ func (db *DB) GetAllTrades() ([]model.Trade, error) {
 	}
 	defer rows.Close()
 
-	var trades []model.Trade
+	trades := make([]model.Trade, 0)
 	for rows.Next() {
 		var trade model.Trade
 		err := rows.Scan(

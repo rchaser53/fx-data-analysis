@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/rchaser53/fx-data-analysis/internal/database"
 	"github.com/rchaser53/fx-data-analysis/internal/handler"
@@ -26,6 +27,15 @@ func main() {
 
 	// Setup router
 	r := gin.Default()
+
+	// CORS middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
 	// API routes
 	api := r.Group("/api/v1")

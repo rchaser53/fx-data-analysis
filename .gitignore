@@ -1,2 +1,4 @@
 fx_trades.db
 *.db
+
+node_modules
