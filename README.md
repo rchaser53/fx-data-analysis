@@ -63,6 +63,20 @@ npm run dev
 
 ブラウザで `http://localhost:3000` を開くと、FX取引データ管理アプリケーションが表示されます。
 
+## レート(USDJPY)の取得と保存
+
+以下のコマンドで、`https://navi.gaitame.com/v3/info/prices/rate` から `pair=USDJPY` のデータを取得し、`data/usdjpy/日付.json` に保存します（ファイル名はローカル日付 `YYYY-MM-DD`）。
+
+```bash
+go run ./cmd/fetch-usdjpy
+```
+
+任意の日付名で保存したい場合は `-date` を指定できます。
+
+```bash
+go run ./cmd/fetch-usdjpy -date 2026-03-01
+```
+
 ## API エンドポイント
 
 ### 1. 取引データの作成
