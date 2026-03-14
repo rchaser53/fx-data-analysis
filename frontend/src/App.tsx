@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import TradeList from './components/TradeList';
 import TradeForm from './components/TradeForm';
+import USDJPYChart from './components/USDJPYChart';
 import { tradesApi } from './api/trades';
-import { Trade, CreateTradeRequest } from './types/trade';
+import { Trade, CreateTradeRequest, USDJPYRate } from './types/trade';
 
 const App: React.FC = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
+  const [rates, setRates] = useState<USDJPYRate[]>([]);
+  const [ratesLoading, setRatesLoading] = useState(true);
+  const [ratesError, setRatesError] = useState<string | null>(null);
 
   const fetchTrades = async () => {
     try {
@@ -24,8 +28,23 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchUSDJPYRates = async () => {
+    try {
+      setRatesLoading(true);
+      const data = await tradesApi.getUSDJPYRates();
+      setRates(data.rates || []);
+      setRatesError(null);
+    } catch (err) {
+      setRatesError('USD/JPYレートデータの取得に失敗しました');
+      console.error(err);
+    } finally {
+      setRatesLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchTrades();
+    fetchUSDJPYRates();
   }, []);
 
   const handleCreate = async (data: CreateTradeRequest) => {
@@ -77,6 +96,13 @@ const App: React.FC = () => {
       </header>
 
       <main style={styles.main}>
+        <section style={styles.section}>
+          <h2 style={styles.sectionTitle}>USD/JPY 為替変動</h2>
+          {ratesLoading && <div style={styles.message}>レートデータを読み込み中...</div>}
+          {ratesError && <div style={styles.error}>{ratesError}</div>}
+          {!ratesLoading && !ratesError && <USDJPYChart points={rates} />}
+        </section>
+
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>
             {editingTrade ? '取引データ編集' : '新規取引データ作成'}

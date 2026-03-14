@@ -18,3 +18,20 @@ export interface UpdateTradeRequest {
   lot_size?: number;
   purchase_rate?: number;
 }
+
+export interface USDJPYRate {
+  date: string;
+  pair: string;
+  bid: number;
+  ask: number;
+  open: number;
+  high: number;
+  low: number;
+  diff: number;
+  close: number;
+}
+
+export interface USDJPYRatesResponse {
+  pair: string;
+  rates: USDJPYRate[];
+}

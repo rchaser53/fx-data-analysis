@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Trade, CreateTradeRequest, UpdateTradeRequest } from '../types/trade';
+import { Trade, CreateTradeRequest, UpdateTradeRequest, USDJPYRatesResponse } from '../types/trade';
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -36,6 +36,12 @@ export const tradesApi = {
   // Delete a trade
   delete: async (id: number): Promise<void> => {
     await api.delete(`/trades/${id}`);
+  },
+
+  // Get USDJPY historical rates for chart
+  getUSDJPYRates: async (): Promise<USDJPYRatesResponse> => {
+    const response = await api.get<USDJPYRatesResponse>('/usdjpy/rates');
+    return response.data;
   },
 };
 

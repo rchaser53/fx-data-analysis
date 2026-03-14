@@ -40,6 +40,11 @@ func main() {
 	// API routes
 	api := r.Group("/api/v1")
 	{
+		usdjpy := api.Group("/usdjpy")
+		{
+			usdjpy.GET("/rates", h.GetUSDJPYRates)
+		}
+
 		trades := api.Group("/trades")
 		{
 			trades.POST("", h.CreateTrade)
