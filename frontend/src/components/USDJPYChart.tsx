@@ -46,6 +46,8 @@ const formatRate = (value: number, step: number): string => {
 };
 
 const USDJPYChart: React.FC<USDJPYChartProps> = ({ points }) => {
+  const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+
   if (points.length === 0) {
     return <div style={styles.message}>表示できるレートデータがありません</div>;
   }
@@ -75,12 +77,57 @@ const USDJPYChart: React.FC<USDJPYChartProps> = ({ points }) => {
     .map((point, index) => `${xForIndex(index)},${yForValue(point.close)}`)
     .join(' ');
 
+  const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width === 0) return;
+
+    const mouseX = ((event.clientX - rect.left) / rect.width) * WIDTH;
+    const clampedX = Math.min(Math.max(mouseX, LEFT_PADDING), WIDTH - RIGHT_PADDING);
+
+    let nearest = 0;
+    let nearestDistance = Math.abs(xForIndex(0) - clampedX);
+    for (let i = 1; i < points.length; i += 1) {
+      const distance = Math.abs(xForIndex(i) - clampedX);
+      if (distance < nearestDistance) {
+        nearest = i;
+        nearestDistance = distance;
+      }
+    }
+
+    setHoveredIndex(nearest);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredIndex(null);
+  };
+
   const firstDate = points[0].date;
   const lastDate = points[points.length - 1].date;
 
+  const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
+  const hoveredX = hoveredIndex !== null ? xForIndex(hoveredIndex) : 0;
+  const hoveredY = hoveredPoint ? yForValue(hoveredPoint.close) : 0;
+
+  const tooltipWidth = 170;
+  const tooltipHeight = 112;
+  const tooltipX = hoveredPoint
+    ? Math.min(Math.max(hoveredX + 12, LEFT_PADDING + 8), WIDTH - RIGHT_PADDING - tooltipWidth)
+    : 0;
+  const tooltipY = hoveredPoint
+    ? Math.min(Math.max(hoveredY - tooltipHeight - 12, TOP_PADDING + 8), HEIGHT - BOTTOM_PADDING - tooltipHeight)
+    : 0;
+
   return (
     <div style={styles.wrapper}>
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" height="auto" role="img" aria-label="USDJPY close chart">
+      <svg
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        width="100%"
+        height="auto"
+        role="img"
+        aria-label="USDJPY close chart"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
         <rect x={0} y={0} width={WIDTH} height={HEIGHT} fill="#ffffff" rx={10} />
 
         <line x1={LEFT_PADDING} y1={TOP_PADDING} x2={LEFT_PADDING} y2={HEIGHT - BOTTOM_PADDING} stroke="#cfd6de" strokeWidth={1} />
@@ -124,6 +171,29 @@ const USDJPYChart: React.FC<USDJPYChartProps> = ({ points }) => {
             fill="#0d6efd"
           />
         ))}
+
+        {hoveredPoint && (
+          <g>
+            <line
+              x1={hoveredX}
+              y1={TOP_PADDING}
+              x2={hoveredX}
+              y2={HEIGHT - BOTTOM_PADDING}
+              stroke="#8aa8d8"
+              strokeWidth={1}
+              strokeDasharray="4 4"
+            />
+            <circle cx={hoveredX} cy={hoveredY} r={5} fill="#0d6efd" stroke="#ffffff" strokeWidth={2} />
+
+            <rect x={tooltipX} y={tooltipY} width={tooltipWidth} height={tooltipHeight} rx={8} fill="#ffffff" stroke="#cfd6de" />
+            <text x={tooltipX + 10} y={tooltipY + 18} fontSize="12" fill="#1f2937">{hoveredPoint.date}</text>
+            <text x={tooltipX + 10} y={tooltipY + 36} fontSize="12" fill="#374151">{`Bid: ${hoveredPoint.bid.toFixed(3)}`}</text>
+            <text x={tooltipX + 10} y={tooltipY + 52} fontSize="12" fill="#374151">{`Ask: ${hoveredPoint.ask.toFixed(3)}`}</text>
+            <text x={tooltipX + 10} y={tooltipY + 68} fontSize="12" fill="#374151">{`High: ${hoveredPoint.high.toFixed(3)}`}</text>
+            <text x={tooltipX + 10} y={tooltipY + 84} fontSize="12" fill="#374151">{`Low: ${hoveredPoint.low.toFixed(3)}`}</text>
+            <text x={tooltipX + 10} y={tooltipY + 100} fontSize="12" fill="#111827">{`Close: ${hoveredPoint.close.toFixed(3)}`}</text>
+          </g>
+        )}
 
         <text x={LEFT_PADDING} y={16} fontSize="13" fill="#2b2f33">{`High ${max.toFixed(3)}`}</text>
         <text x={LEFT_PADDING + 130} y={16} fontSize="13" fill="#2b2f33">{`Low ${min.toFixed(3)}`}</text>
