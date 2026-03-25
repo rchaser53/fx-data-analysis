@@ -3,6 +3,7 @@ package model
 // USDJPYRate represents one daily USDJPY snapshot loaded from JSON files.
 type USDJPYRate struct {
 	Date  string  `json:"date"`
+	Label string  `json:"label,omitempty"`
 	Pair  string  `json:"pair"`
 	Bid   float64 `json:"bid"`
 	Ask   float64 `json:"ask"`
@@ -15,6 +16,7 @@ type USDJPYRate struct {
 
 // USDJPYRatesResponse is the API payload for the USDJPY chart.
 type USDJPYRatesResponse struct {
-	Pair  string       `json:"pair"`
-	Rates []USDJPYRate `json:"rates"`
+	Pair      string       `json:"pair"`
+	Timeframe string       `json:"timeframe"`
+	Rates     []USDJPYRate `json:"rates"`
 }

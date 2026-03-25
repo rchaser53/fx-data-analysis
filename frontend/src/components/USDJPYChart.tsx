@@ -3,6 +3,7 @@ import { USDJPYRate } from '../types/trade';
 
 interface USDJPYChartProps {
   points: USDJPYRate[];
+  timeframe: 'daily' | 'weekly';
 }
 
 const WIDTH = 980;
@@ -45,7 +46,7 @@ const formatRate = (value: number, step: number): string => {
   return value.toFixed(4);
 };
 
-const USDJPYChart: React.FC<USDJPYChartProps> = ({ points }) => {
+const USDJPYChart: React.FC<USDJPYChartProps> = ({ points, timeframe }) => {
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
 
   if (points.length === 0) {
@@ -101,8 +102,8 @@ const USDJPYChart: React.FC<USDJPYChartProps> = ({ points }) => {
     setHoveredIndex(null);
   };
 
-  const firstDate = points[0].date;
-  const lastDate = points[points.length - 1].date;
+  const firstLabel = points[0].label || points[0].date;
+  const lastLabel = points[points.length - 1].label || points[points.length - 1].date;
 
   const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
   const hoveredX = hoveredIndex !== null ? xForIndex(hoveredIndex) : 0;
@@ -186,7 +187,7 @@ const USDJPYChart: React.FC<USDJPYChartProps> = ({ points }) => {
             <circle cx={hoveredX} cy={hoveredY} r={5} fill="#0d6efd" stroke="#ffffff" strokeWidth={2} />
 
             <rect x={tooltipX} y={tooltipY} width={tooltipWidth} height={tooltipHeight} rx={8} fill="#ffffff" stroke="#cfd6de" />
-            <text x={tooltipX + 10} y={tooltipY + 18} fontSize="12" fill="#1f2937">{hoveredPoint.date}</text>
+            <text x={tooltipX + 10} y={tooltipY + 18} fontSize="12" fill="#1f2937">{hoveredPoint.label || hoveredPoint.date}</text>
             <text x={tooltipX + 10} y={tooltipY + 36} fontSize="12" fill="#374151">{`Bid: ${hoveredPoint.bid.toFixed(3)}`}</text>
             <text x={tooltipX + 10} y={tooltipY + 52} fontSize="12" fill="#374151">{`Ask: ${hoveredPoint.ask.toFixed(3)}`}</text>
             <text x={tooltipX + 10} y={tooltipY + 68} fontSize="12" fill="#374151">{`High: ${hoveredPoint.high.toFixed(3)}`}</text>
@@ -197,8 +198,9 @@ const USDJPYChart: React.FC<USDJPYChartProps> = ({ points }) => {
 
         <text x={LEFT_PADDING} y={16} fontSize="13" fill="#2b2f33">{`High ${max.toFixed(3)}`}</text>
         <text x={LEFT_PADDING + 130} y={16} fontSize="13" fill="#2b2f33">{`Low ${min.toFixed(3)}`}</text>
-        <text x={LEFT_PADDING} y={HEIGHT - 10} fontSize="12" fill="#59636e">{firstDate}</text>
-        <text x={WIDTH - RIGHT_PADDING} y={HEIGHT - 10} fontSize="12" fill="#59636e" textAnchor="end">{lastDate}</text>
+        <text x={LEFT_PADDING} y={HEIGHT - 10} fontSize="12" fill="#59636e">{firstLabel}</text>
+        <text x={WIDTH - RIGHT_PADDING} y={HEIGHT - 10} fontSize="12" fill="#59636e" textAnchor="end">{lastLabel}</text>
+        <text x={WIDTH / 2} y={16} fontSize="13" fill="#59636e" textAnchor="middle">{timeframe === 'weekly' ? '週足' : '日足'}</text>
       </svg>
     </div>
   );

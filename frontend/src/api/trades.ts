@@ -39,8 +39,10 @@ export const tradesApi = {
   },
 
   // Get USDJPY historical rates for chart
-  getUSDJPYRates: async (): Promise<USDJPYRatesResponse> => {
-    const response = await api.get<USDJPYRatesResponse>('/usdjpy/rates');
+  getUSDJPYRates: async (timeframe: 'daily' | 'weekly' = 'daily'): Promise<USDJPYRatesResponse> => {
+    const response = await api.get<USDJPYRatesResponse>('/usdjpy/rates', {
+      params: { timeframe },
+    });
     return response.data;
   },
 };

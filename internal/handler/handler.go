@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rchaser53/fx-data-analysis/internal/database"
@@ -14,6 +16,11 @@ import (
 )
 
 const usdjpyDataDir = "./data/usdjpy"
+
+const (
+	usdJPYTimeframeDaily  = "daily"
+	usdJPYTimeframeWeekly = "weekly"
+)
 
 type Handler struct {
 	db *database.DB
@@ -110,6 +117,12 @@ func (h *Handler) DeleteTrade(c *gin.Context) {
 
 // GetUSDJPYRates retrieves all USDJPY rate files and returns them sorted by date
 func (h *Handler) GetUSDJPYRates(c *gin.Context) {
+	timeframe := normalizeUSDJPYTimeframe(c.DefaultQuery("timeframe", usdJPYTimeframeDaily))
+	if timeframe == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid timeframe"})
+		return
+	}
+
 	filePaths, err := filepath.Glob(filepath.Join(usdjpyDataDir, "*.json"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list rate files"})
@@ -137,8 +150,112 @@ func (h *Handler) GetUSDJPYRates(c *gin.Context) {
 		return rates[i].Date < rates[j].Date
 	})
 
+	rates = withDailyLabels(rates)
+	if timeframe == usdJPYTimeframeWeekly {
+		rates, err = aggregateUSDJPYRatesByWeek(rates)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to aggregate weekly rates"})
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, model.USDJPYRatesResponse{
-		Pair:  "USDJPY",
-		Rates: rates,
+		Pair:      "USDJPY",
+		Timeframe: timeframe,
+		Rates:     rates,
 	})
+}
+
+func normalizeUSDJPYTimeframe(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", usdJPYTimeframeDaily:
+		return usdJPYTimeframeDaily
+	case usdJPYTimeframeWeekly:
+		return usdJPYTimeframeWeekly
+	default:
+		return ""
+	}
+}
+
+func withDailyLabels(rates []model.USDJPYRate) []model.USDJPYRate {
+	if len(rates) == 0 {
+		return rates
+	}
+
+	result := make([]model.USDJPYRate, len(rates))
+	for i, rate := range rates {
+		rate.Label = rate.Date
+		result[i] = rate
+	}
+
+	return result
+}
+
+func aggregateUSDJPYRatesByWeek(rates []model.USDJPYRate) ([]model.USDJPYRate, error) {
+	if len(rates) == 0 {
+		return rates, nil
+	}
+
+	type weekKey struct {
+		year int
+		week int
+	}
+
+	grouped := make([][]model.USDJPYRate, 0)
+	currentKey := weekKey{}
+	currentGroup := make([]model.USDJPYRate, 0)
+
+	for _, rate := range rates {
+		parsedDate, err := time.Parse("2006-01-02", rate.Date)
+		if err != nil {
+			return nil, err
+		}
+
+		year, week := parsedDate.ISOWeek()
+		key := weekKey{year: year, week: week}
+		if len(currentGroup) == 0 || key == currentKey {
+			currentKey = key
+			currentGroup = append(currentGroup, rate)
+			continue
+		}
+
+		grouped = append(grouped, currentGroup)
+		currentKey = key
+		currentGroup = []model.USDJPYRate{rate}
+	}
+
+	if len(currentGroup) > 0 {
+		grouped = append(grouped, currentGroup)
+	}
+
+	weeklyRates := make([]model.USDJPYRate, 0, len(grouped))
+	for _, group := range grouped {
+		first := group[0]
+		last := group[len(group)-1]
+		weeklyRate := model.USDJPYRate{
+			Date:  first.Date,
+			Label: first.Date + " - " + last.Date,
+			Pair:  first.Pair,
+			Bid:   last.Bid,
+			Ask:   last.Ask,
+			Open:  first.Open,
+			High:  first.High,
+			Low:   first.Low,
+			Close: last.Close,
+		}
+
+		for _, rate := range group[1:] {
+			if rate.High > weeklyRate.High {
+				weeklyRate.High = rate.High
+			}
+			if rate.Low < weeklyRate.Low {
+				weeklyRate.Low = rate.Low
+			}
+		}
+
+		weeklyRate.Diff = weeklyRate.Close - weeklyRate.Open
+		weeklyRates = append(weeklyRates, weeklyRate)
+	}
+
+	return weeklyRates, nil
 }

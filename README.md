@@ -236,6 +236,20 @@ IDを指定して取引データを削除します。
 {
   "message": "trade deleted successfully"
 }
+
+### 6. USD/JPY レートの取得
+
+チャート表示用の USD/JPY レートを取得します。デフォルトは日足で、`timeframe=weekly` を指定すると週足を返します。
+
+**エンドポイント:** `GET /api/v1/usdjpy/rates`
+
+**クエリパラメータ:**
+- `timeframe=daily|weekly`
+
+**curlコマンド例:**
+```bash
+curl "http://localhost:8080/api/v1/usdjpy/rates?timeframe=weekly"
+```
 ```
 
 **curlコマンド例:**

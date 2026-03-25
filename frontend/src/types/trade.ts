@@ -21,6 +21,7 @@ export interface UpdateTradeRequest {
 
 export interface USDJPYRate {
   date: string;
+  label?: string;
   pair: string;
   bid: number;
   ask: number;
@@ -33,5 +34,6 @@ export interface USDJPYRate {
 
 export interface USDJPYRatesResponse {
   pair: string;
+  timeframe: 'daily' | 'weekly';
   rates: USDJPYRate[];
 }

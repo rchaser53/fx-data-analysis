@@ -5,12 +5,15 @@ import USDJPYChart from './components/USDJPYChart';
 import { tradesApi } from './api/trades';
 import { Trade, CreateTradeRequest, USDJPYRate } from './types/trade';
 
+type RateTimeframe = 'daily' | 'weekly';
+
 const App: React.FC = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [rates, setRates] = useState<USDJPYRate[]>([]);
+  const [ratesTimeframe, setRatesTimeframe] = useState<RateTimeframe>('daily');
   const [ratesLoading, setRatesLoading] = useState(true);
   const [ratesError, setRatesError] = useState<string | null>(null);
 
@@ -28,11 +31,12 @@ const App: React.FC = () => {
     }
   };
 
-  const fetchUSDJPYRates = async () => {
+  const fetchUSDJPYRates = async (timeframe: RateTimeframe) => {
     try {
       setRatesLoading(true);
-      const data = await tradesApi.getUSDJPYRates();
+      const data = await tradesApi.getUSDJPYRates(timeframe);
       setRates(data.rates || []);
+      setRatesTimeframe(data.timeframe || timeframe);
       setRatesError(null);
     } catch (err) {
       setRatesError('USD/JPYレートデータの取得に失敗しました');
@@ -44,8 +48,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     fetchTrades();
-    fetchUSDJPYRates();
   }, []);
+
+  useEffect(() => {
+    fetchUSDJPYRates(ratesTimeframe);
+  }, [ratesTimeframe]);
 
   const handleCreate = async (data: CreateTradeRequest) => {
     try {
@@ -89,6 +96,11 @@ const App: React.FC = () => {
     setEditingTrade(null);
   };
 
+  const handleTimeframeChange = (timeframe: RateTimeframe) => {
+    if (timeframe === ratesTimeframe) return;
+    setRatesTimeframe(timeframe);
+  };
+
   return (
     <div style={styles.container}>
       <header style={styles.header}>
@@ -97,10 +109,28 @@ const App: React.FC = () => {
 
       <main style={styles.main}>
         <section style={styles.section}>
-          <h2 style={styles.sectionTitle}>USD/JPY 為替変動</h2>
+          <div style={styles.sectionHeader}>
+            <h2 style={styles.sectionTitle}>USD/JPY 為替変動</h2>
+            <div style={styles.toggleGroup}>
+              <button
+                type="button"
+                onClick={() => handleTimeframeChange('daily')}
+                style={ratesTimeframe === 'daily' ? styles.toggleButtonActive : styles.toggleButton}
+              >
+                日足
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTimeframeChange('weekly')}
+                style={ratesTimeframe === 'weekly' ? styles.toggleButtonActive : styles.toggleButton}
+              >
+                週足
+              </button>
+            </div>
+          </div>
           {ratesLoading && <div style={styles.message}>レートデータを読み込み中...</div>}
           {ratesError && <div style={styles.error}>{ratesError}</div>}
-          {!ratesLoading && !ratesError && <USDJPYChart points={rates} />}
+          {!ratesLoading && !ratesError && <USDJPYChart points={rates} timeframe={ratesTimeframe} />}
         </section>
 
         <section style={styles.section}>
@@ -155,10 +185,40 @@ const styles = {
   section: {
     marginBottom: '40px',
   },
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '16px',
+    marginBottom: '16px',
+    flexWrap: 'wrap' as const,
+  },
   sectionTitle: {
     fontSize: '20px',
-    marginBottom: '16px',
+    marginBottom: 0,
     color: '#333',
+  },
+  toggleGroup: {
+    display: 'inline-flex',
+    gap: '8px',
+  },
+  toggleButton: {
+    border: '1px solid #cbd5e1',
+    backgroundColor: '#ffffff',
+    color: '#334155',
+    borderRadius: '999px',
+    padding: '8px 14px',
+    fontSize: '14px',
+    cursor: 'pointer',
+  },
+  toggleButtonActive: {
+    border: '1px solid #007bff',
+    backgroundColor: '#007bff',
+    color: '#ffffff',
+    borderRadius: '999px',
+    padding: '8px 14px',
+    fontSize: '14px',
+    cursor: 'pointer',
   },
   message: {
     padding: '20px',
