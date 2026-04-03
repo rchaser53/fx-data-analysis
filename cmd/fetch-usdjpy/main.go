@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -31,6 +32,8 @@ type rateItem struct {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	outDir := flag.String("outdir", "data/usdjpy", "出力ディレクトリ")
 	dateStr := flag.String("date", "", "保存ファイル名に使う日付(YYYY-MM-DD)。未指定ならローカル日付")
 	timeout := flag.Duration("timeout", 10*time.Second, "HTTPタイムアウト")
@@ -68,6 +71,7 @@ func main() {
 		exitf("write failed: %v", err)
 	}
 
+	log.Printf("saved USDJPY data to %s", outPath)
 	fmt.Println(outPath)
 }
 
@@ -108,6 +112,6 @@ func fetchUSDJPY(timeout time.Duration) (rateItem, error) {
 }
 
 func exitf(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
+	log.Printf(format, args...)
 	os.Exit(1)
 }
