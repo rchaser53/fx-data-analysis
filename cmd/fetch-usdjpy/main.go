@@ -49,8 +49,13 @@ func main() {
 		exitf("fetch failed: %v", err)
 	}
 
-	if err := os.MkdirAll(*outDir, 0o755); err != nil {
-		exitf("mkdir failed: %v", err)
+	absOutDir, err := filepath.Abs(*outDir)
+	if err != nil {
+		exitf("failed to resolve absolute path for %q: %v", *outDir, err)
+	}
+
+	if err := os.MkdirAll(absOutDir, 0o755); err != nil {
+		exitf("mkdir failed for %q: %v", absOutDir, err)
 	}
 
 	outPath := filepath.Join(*outDir, name+".json")
