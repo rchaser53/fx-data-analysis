@@ -150,6 +150,12 @@ func (h *Handler) GetUSDJPYRates(c *gin.Context) {
 		return rates[i].Date < rates[j].Date
 	})
 
+	rates, err = filterUSDJPYTradingDays(rates)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to filter rate dates"})
+		return
+	}
+
 	rates = withDailyLabels(rates)
 	if timeframe == usdJPYTimeframeWeekly {
 		rates, err = aggregateUSDJPYRatesByWeek(rates)
@@ -189,6 +195,29 @@ func withDailyLabels(rates []model.USDJPYRate) []model.USDJPYRate {
 	}
 
 	return result
+}
+
+func filterUSDJPYTradingDays(rates []model.USDJPYRate) ([]model.USDJPYRate, error) {
+	if len(rates) == 0 {
+		return rates, nil
+	}
+
+	filtered := make([]model.USDJPYRate, 0, len(rates))
+	for _, rate := range rates {
+		parsedDate, err := time.Parse("2006-01-02", rate.Date)
+		if err != nil {
+			return nil, err
+		}
+
+		switch parsedDate.Weekday() {
+		case time.Saturday, time.Sunday:
+			continue
+		default:
+			filtered = append(filtered, rate)
+		}
+	}
+
+	return filtered, nil
 }
 
 func aggregateUSDJPYRatesByWeek(rates []model.USDJPYRate) ([]model.USDJPYRate, error) {

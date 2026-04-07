@@ -76,3 +76,28 @@ func TestNormalizeUSDJPYTimeframe(t *testing.T) {
 		}
 	}
 }
+
+func TestFilterUSDJPYTradingDays(t *testing.T) {
+	rates := []model.USDJPYRate{
+		{Date: "2026-03-20", Pair: "USDJPY"},
+		{Date: "2026-03-21", Pair: "USDJPY"},
+		{Date: "2026-03-22", Pair: "USDJPY"},
+		{Date: "2026-03-23", Pair: "USDJPY"},
+	}
+
+	filtered, err := filterUSDJPYTradingDays(rates)
+	if err != nil {
+		t.Fatalf("filterUSDJPYTradingDays returned error: %v", err)
+	}
+
+	if len(filtered) != 2 {
+		t.Fatalf("expected 2 trading-day rates, got %d", len(filtered))
+	}
+
+	if filtered[0].Date != "2026-03-20" {
+		t.Fatalf("expected first trading day to remain 2026-03-20, got %s", filtered[0].Date)
+	}
+	if filtered[1].Date != "2026-03-23" {
+		t.Fatalf("expected second trading day to remain 2026-03-23, got %s", filtered[1].Date)
+	}
+}
