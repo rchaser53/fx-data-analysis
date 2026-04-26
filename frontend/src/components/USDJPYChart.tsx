@@ -12,6 +12,9 @@ const LEFT_PADDING = 72;
 const RIGHT_PADDING = 40;
 const TOP_PADDING = 28;
 const BOTTOM_PADDING = 40;
+const BULLISH_COLOR = '#16a34a';
+const BEARISH_COLOR = '#dc2626';
+const NEUTRAL_COLOR = '#64748b';
 
 const pickNiceStep = (rawStep: number): number => {
   const exponent = Math.floor(Math.log10(rawStep));
@@ -46,6 +49,12 @@ const formatRate = (value: number, step: number): string => {
   return value.toFixed(4);
 };
 
+const getCandleColor = (point: USDJPYRate): string => {
+  if (point.close > point.open) return BULLISH_COLOR;
+  if (point.close < point.open) return BEARISH_COLOR;
+  return NEUTRAL_COLOR;
+};
+
 const USDJPYChart: React.FC<USDJPYChartProps> = ({ points, timeframe }) => {
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
 
@@ -53,48 +62,37 @@ const USDJPYChart: React.FC<USDJPYChartProps> = ({ points, timeframe }) => {
     return <div style={styles.message}>表示できるレートデータがありません</div>;
   }
 
-  const closePrices = points.map((p) => p.close);
-  const min = Math.min(...closePrices);
-  const max = Math.max(...closePrices);
+  const min = Math.min(...points.map((p) => p.low));
+  const max = Math.max(...points.map((p) => p.high));
   const tickValues = calcTickValues(min, max);
   const tickStep = tickValues.length > 1 ? tickValues[1] - tickValues[0] : 0.001;
   const top = tickValues[tickValues.length - 1];
   const bottom = tickValues[0];
   const chartWidth = WIDTH - LEFT_PADDING - RIGHT_PADDING;
   const chartHeight = HEIGHT - TOP_PADDING - BOTTOM_PADDING;
+  const slotWidth = points.length === 1 ? chartWidth : chartWidth / points.length;
+  const candleWidth = Math.min(Math.max(slotWidth * 0.72, 1.5), 18);
 
   const xForIndex = (index: number) => {
-    if (points.length === 1) {
-      return WIDTH / 2;
-    }
-    return LEFT_PADDING + (chartWidth * index) / (points.length - 1);
+    return LEFT_PADDING + slotWidth * index + slotWidth / 2;
   };
 
   const yForValue = (value: number) => {
     return TOP_PADDING + ((top - value) / (top - bottom)) * chartHeight;
   };
 
-  const polylinePoints = points
-    .map((point, index) => `${xForIndex(index)},${yForValue(point.close)}`)
-    .join(' ');
-
   const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     if (rect.width === 0) return;
 
-    const mouseX = ((event.clientX - rect.left) / rect.width) * WIDTH;
-    const clampedX = Math.min(Math.max(mouseX, LEFT_PADDING), WIDTH - RIGHT_PADDING);
-
-    let nearest = 0;
-    let nearestDistance = Math.abs(xForIndex(0) - clampedX);
-    for (let i = 1; i < points.length; i += 1) {
-      const distance = Math.abs(xForIndex(i) - clampedX);
-      if (distance < nearestDistance) {
-        nearest = i;
-        nearestDistance = distance;
-      }
+    if (points.length === 1) {
+      setHoveredIndex(0);
+      return;
     }
 
+    const mouseX = ((event.clientX - rect.left) / rect.width) * WIDTH - LEFT_PADDING;
+    const clampedX = Math.min(Math.max(mouseX, 0), chartWidth);
+    const nearest = Math.min(points.length - 1, Math.max(0, Math.floor(clampedX / slotWidth)));
     setHoveredIndex(nearest);
   };
 
@@ -107,15 +105,15 @@ const USDJPYChart: React.FC<USDJPYChartProps> = ({ points, timeframe }) => {
 
   const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
   const hoveredX = hoveredIndex !== null ? xForIndex(hoveredIndex) : 0;
-  const hoveredY = hoveredPoint ? yForValue(hoveredPoint.close) : 0;
+  const hoveredY = hoveredPoint ? yForValue((hoveredPoint.high + hoveredPoint.low) / 2) : 0;
 
-  const tooltipWidth = 170;
-  const tooltipHeight = 112;
+  const tooltipWidth = 176;
+  const tooltipHeight = 128;
   const tooltipX = hoveredPoint
     ? Math.min(Math.max(hoveredX + 12, LEFT_PADDING + 8), WIDTH - RIGHT_PADDING - tooltipWidth)
     : 0;
   const tooltipY = hoveredPoint
-    ? Math.min(Math.max(hoveredY - tooltipHeight - 12, TOP_PADDING + 8), HEIGHT - BOTTOM_PADDING - tooltipHeight)
+    ? Math.min(Math.max(hoveredY - tooltipHeight / 2, TOP_PADDING + 8), HEIGHT - BOTTOM_PADDING - tooltipHeight)
     : 0;
 
   return (
@@ -125,7 +123,7 @@ const USDJPYChart: React.FC<USDJPYChartProps> = ({ points, timeframe }) => {
         width="100%"
         height="auto"
         role="img"
-        aria-label="USDJPY close chart"
+        aria-label="USDJPY candlestick chart"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
@@ -161,17 +159,40 @@ const USDJPYChart: React.FC<USDJPYChartProps> = ({ points, timeframe }) => {
           );
         })}
 
-        <polyline fill="none" stroke="#0d6efd" strokeWidth={3} points={polylinePoints} />
+        {points.map((point, index) => {
+          const x = xForIndex(index);
+          const highY = yForValue(point.high);
+          const lowY = yForValue(point.low);
+          const openY = yForValue(point.open);
+          const closeY = yForValue(point.close);
+          const bodyHeight = Math.max(Math.abs(openY - closeY), 2);
+          const bodyY = (openY + closeY) / 2 - bodyHeight / 2;
+          const candleColor = getCandleColor(point);
+          const isHovered = hoveredIndex === index;
 
-        {points.map((point, index) => (
-          <circle
-            key={`${point.date}-${index}`}
-            cx={xForIndex(index)}
-            cy={yForValue(point.close)}
-            r={3}
-            fill="#0d6efd"
-          />
-        ))}
+          return (
+            <g key={`${point.date}-${index}`}>
+              <line
+                x1={x}
+                y1={highY}
+                x2={x}
+                y2={lowY}
+                stroke={candleColor}
+                strokeWidth={isHovered ? 2 : 1.4}
+              />
+              <rect
+                x={x - candleWidth / 2}
+                y={bodyY}
+                width={candleWidth}
+                height={bodyHeight}
+                fill={point.open === point.close ? '#ffffff' : candleColor}
+                stroke={candleColor}
+                strokeWidth={isHovered ? 2 : 1.2}
+                rx={1}
+              />
+            </g>
+          );
+        })}
 
         {hoveredPoint && (
           <g>
@@ -184,23 +205,26 @@ const USDJPYChart: React.FC<USDJPYChartProps> = ({ points, timeframe }) => {
               strokeWidth={1}
               strokeDasharray="4 4"
             />
-            <circle cx={hoveredX} cy={hoveredY} r={5} fill="#0d6efd" stroke="#ffffff" strokeWidth={2} />
-
             <rect x={tooltipX} y={tooltipY} width={tooltipWidth} height={tooltipHeight} rx={8} fill="#ffffff" stroke="#cfd6de" />
             <text x={tooltipX + 10} y={tooltipY + 18} fontSize="12" fill="#1f2937">{hoveredPoint.label || hoveredPoint.date}</text>
-            <text x={tooltipX + 10} y={tooltipY + 36} fontSize="12" fill="#374151">{`Bid: ${hoveredPoint.bid.toFixed(3)}`}</text>
-            <text x={tooltipX + 10} y={tooltipY + 52} fontSize="12" fill="#374151">{`Ask: ${hoveredPoint.ask.toFixed(3)}`}</text>
-            <text x={tooltipX + 10} y={tooltipY + 68} fontSize="12" fill="#374151">{`High: ${hoveredPoint.high.toFixed(3)}`}</text>
-            <text x={tooltipX + 10} y={tooltipY + 84} fontSize="12" fill="#374151">{`Low: ${hoveredPoint.low.toFixed(3)}`}</text>
-            <text x={tooltipX + 10} y={tooltipY + 100} fontSize="12" fill="#111827">{`Close: ${hoveredPoint.close.toFixed(3)}`}</text>
+            <text x={tooltipX + 10} y={tooltipY + 36} fontSize="12" fill="#374151">{`始値: ${hoveredPoint.open.toFixed(3)}`}</text>
+            <text x={tooltipX + 10} y={tooltipY + 52} fontSize="12" fill="#374151">{`高値: ${hoveredPoint.high.toFixed(3)}`}</text>
+            <text x={tooltipX + 10} y={tooltipY + 68} fontSize="12" fill="#374151">{`安値: ${hoveredPoint.low.toFixed(3)}`}</text>
+            <text x={tooltipX + 10} y={tooltipY + 84} fontSize="12" fill="#111827">{`終値: ${hoveredPoint.close.toFixed(3)}`}</text>
+            <text x={tooltipX + 10} y={tooltipY + 100} fontSize="12" fill="#374151">{`Bid: ${hoveredPoint.bid.toFixed(3)}`}</text>
+            <text x={tooltipX + 10} y={tooltipY + 116} fontSize="12" fill="#374151">{`Ask: ${hoveredPoint.ask.toFixed(3)}`}</text>
           </g>
         )}
 
-        <text x={LEFT_PADDING} y={16} fontSize="13" fill="#2b2f33">{`High ${max.toFixed(3)}`}</text>
-        <text x={LEFT_PADDING + 130} y={16} fontSize="13" fill="#2b2f33">{`Low ${min.toFixed(3)}`}</text>
+        <text x={LEFT_PADDING} y={16} fontSize="13" fill="#2b2f33">{`高値 ${max.toFixed(3)}`}</text>
+        <text x={LEFT_PADDING + 130} y={16} fontSize="13" fill="#2b2f33">{`安値 ${min.toFixed(3)}`}</text>
         <text x={LEFT_PADDING} y={HEIGHT - 10} fontSize="12" fill="#59636e">{firstLabel}</text>
         <text x={WIDTH - RIGHT_PADDING} y={HEIGHT - 10} fontSize="12" fill="#59636e" textAnchor="end">{lastLabel}</text>
         <text x={WIDTH / 2} y={16} fontSize="13" fill="#59636e" textAnchor="middle">{timeframe === 'weekly' ? '週足' : '日足'}</text>
+        <rect x={WIDTH - RIGHT_PADDING - 126} y={10} width={10} height={10} rx={2} fill={BULLISH_COLOR} />
+        <text x={WIDTH - RIGHT_PADDING - 112} y={19} fontSize="12" fill="#475569">陽線</text>
+        <rect x={WIDTH - RIGHT_PADDING - 70} y={10} width={10} height={10} rx={2} fill={BEARISH_COLOR} />
+        <text x={WIDTH - RIGHT_PADDING - 56} y={19} fontSize="12" fill="#475569">陰線</text>
       </svg>
     </div>
   );

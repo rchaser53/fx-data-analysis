@@ -110,7 +110,7 @@ const App: React.FC = () => {
       <main style={styles.main}>
         <section style={styles.section}>
           <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>USD/JPY 為替変動</h2>
+            <h2 style={styles.sectionTitle}>USD/JPY 為替変動（ローソク足）</h2>
             <div style={styles.toggleGroup}>
               <button
                 type="button"
